@@ -4,6 +4,10 @@ __pycache__/
 *$py.class
 notes.txt
 
+# Firebase
+.firebase/
+firebase-debug.log
+
 # Terraform files
 terraform.tfstate
 terraform.tfstate.backup

@@ -6,7 +6,7 @@ export
 IMAGE_NAME = $(DOCKER_USERNAME)/ai-blog-generator
 VERSION = $(APP_VERSION)
 
-.PHONY: build run down logs push clean
+.PHONY: build run down logs push clean firebase-install firebase-deploy
 
 ## Build the Docker image
 build:
@@ -34,6 +34,14 @@ clean:
 
 ## Build and push in one step
 release: build push
+
+## Install Firebase CLI (one-time)
+firebase-install:
+	npm install -g firebase-tools
+
+## Deploy Firebase Hosting (public-facing URL fronting Cloud Run)
+firebase-deploy:
+	firebase deploy --only hosting
 
 ## Build, push and deploy to GCP Cloud Run via Terraform
 deploy-image:

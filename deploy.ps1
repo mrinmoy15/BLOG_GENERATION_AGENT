@@ -136,7 +136,36 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+# ────────────────────────────────────────
+# Step 6 -- Grant Firebase Hosting permission to invoke Cloud Run
+# ────────────────────────────────────────
+Write-Host ""
+Write-Host "[IAM] Granting Firebase Hosting service agent Cloud Run invoker role..." -ForegroundColor Yellow
+$firebaseSA = "service-$ProjectNumber@gcp-sa-firebasehosting.iam.gserviceaccount.com"
+gcloud run services add-iam-policy-binding blog-generation-agent `
+    --region=$Region `
+    --member="serviceAccount:$firebaseSA" `
+    --role="roles/run.invoker" `
+    --project=$ProjectId 2>$null
+
+Write-Host "[OK] Firebase Hosting IAM binding set" -ForegroundColor Green
+
+# ────────────────────────────────────────
+# Step 7 -- Deploy Firebase Hosting
+# ────────────────────────────────────────
+Write-Host ""
+Write-Host "[FIREBASE] Deploying Firebase Hosting..." -ForegroundColor Yellow
+Set-Location $PSScriptRoot
+firebase deploy --only hosting
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[WARN] Firebase deploy failed -- hosting URL may not be updated" -ForegroundColor Yellow
+} else {
+    Write-Host "[OK] Firebase Hosting deployed" -ForegroundColor Green
+}
+
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
 Write-Host "   Deployment Complete!                 " -ForegroundColor Green
+Write-Host "   App URL: https://$ProjectId.web.app  " -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green

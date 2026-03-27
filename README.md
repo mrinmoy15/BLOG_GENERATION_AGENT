@@ -42,24 +42,45 @@ Progress streams live to the UI via Server-Sent Events (SSE) so you can watch ea
 │
 ├── frontend/
 │   ├── index.html
-│   ├── vite.config.ts
 │   ├── package.json
+│   ├── package-lock.json
 │   ├── tsconfig.json
 │   └── src/
 │       ├── main.ts             # app entry point
 │       ├── api.ts              # SSE + fetch wrappers
 │       ├── types.ts            # TypeScript interfaces
+│       ├── vite-env.d.ts       # Vite environment type declarations
 │       ├── components/
 │       │   ├── InputPanel.ts   # topic input form
 │       │   ├── ProgressStream.ts # live node progress feed
 │       │   ├── ResultPanel.ts  # markdown preview + editor + download
+│       │   ├── Sidebar.ts      # sidebar navigation
 │       │   └── Toast.ts        # notifications
 │       └── styles/
 │           └── main.css
 │
+├── my-terraform/               # Terraform IaC for GCP infrastructure
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   └── terraform.tfvars
+│
 ├── outputs/                    # generated .md files saved here
-├── .env.example
+├── Dockerfile
+├── compose.yaml
+├── firebase.json               # Firebase Hosting config (Cloud Run rewrite)
+├── .firebaserc                 # Firebase project binding
+├── Makefile                    # build / deploy shortcuts
+├── deploy.ps1                  # PowerShell deploy script
+├── new_image_deploy.ps1        # PowerShell script for image re-deploy
+├── Explore.ipynb               # exploratory notebook
+├── pyproject.toml
 ├── requirements.txt
+├── uv.lock
+├── GCP_DEPLOYMENT_STEPS_ADHOC.MD
+├── GCP_DEPLOYMENT_PRODUCTION.MD
+├── LICENSE
+├── .env.example
 └── README.md
 ```
 
@@ -253,6 +274,46 @@ For detailed deployment instructions, see [GCP_DEPLOYMENT_STEPS_ADOC.MD](GCP_DEP
 It is advisible to try the individual commands for local developement, make sure everything works, and then when you are ready, use the nuclear command to deploy in gcp.  
   
 `make deploy-image`
+
+## Firebase Hosting (Public URL)
+
+Instead of the auto-generated Cloud Run URL, the app is served through Firebase Hosting at:
+
+```
+https://norse-rampart-273715.web.app
+```
+
+Firebase Hosting acts as a clean front-end that proxies all traffic to the Cloud Run service via the `rewrites` rule in `firebase.json`. There is no static content — every request is forwarded to Cloud Run.
+
+### One-time setup (run manually in terminal)
+
+```bash
+# 1. Install Firebase CLI
+make firebase-install
+
+# 2. Log in
+firebase login
+
+# 3. Add Firebase to your GCP project via console.firebase.google.com
+#    (the CLI addfirebase command requires interactive prompts)
+
+# 4. Init hosting — must be run directly, not via make (interactive prompts)
+firebase init hosting --project norse-rampart-273715
+# When prompted: public dir → "."  |  single-page app → N  |  overwrite → N
+```
+
+### Deploy hosting
+
+```bash
+make firebase-deploy
+```
+
+> Firebase Hosting is free. The Cloud Run service still handles all compute — Firebase just provides the nicer URL and global CDN edge for the initial connection.
+  
+  
+Here is the final link of the [app url](https://norse-rampart-273715.web.app)
+
+---
 
 
 ## Tech stack

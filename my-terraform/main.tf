@@ -35,6 +35,16 @@ resource "google_project_service" "compute" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "firebase" {
+  service            = "firebase.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "firebase_hosting" {
+  service            = "firebasehosting.googleapis.com"
+  disable_on_destroy = false
+}
+
 # ────────────────────────────────────────
 # GCS Bucket
 # ────────────────────────────────────────
