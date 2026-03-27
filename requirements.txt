@@ -23,6 +23,7 @@ faiss-cpu
 langgraph-checkpoint-postgres
 psycopg[binary]
 google-genai
+google-cloud-storage
 fastapi
 uvicorn[standard]
 python-dotenv

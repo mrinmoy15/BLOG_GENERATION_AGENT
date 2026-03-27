@@ -2,6 +2,14 @@
 __pycache__/
 *.py[codz]
 *$py.class
+notes.txt
+
+# Terraform files
+terraform.tfstate
+terraform.tfstate.backup
+.terraform/
+*.tfvars
+.terraform.lock.hcl
 
 # C extensions
 *.so

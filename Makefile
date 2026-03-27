@@ -34,3 +34,12 @@ clean:
 
 ## Build and push in one step
 release: build push
+
+## Build, push and deploy to GCP Cloud Run via Terraform
+deploy-image:
+	powershell -ExecutionPolicy Bypass -File ./new_image_deploy.ps1 \
+		-ProjectId "$(GCP_PROJECT_ID)" \
+		-ProjectNumber "$(GCP_PROJECT_NUMBER)" \
+		-Region "$(GCP_REGION)" \
+		-BucketName "$(GCS_BUCKET)" \
+		-ImageTag "$(VERSION)"

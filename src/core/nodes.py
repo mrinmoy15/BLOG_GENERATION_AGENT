@@ -10,7 +10,7 @@ from pathlib import Path
 
 from state import State
 from pydantic_models import RouterDecision, EvidenceItem, EvidencePack, Plan, Task, GlobalImagePlan
-from utils import _tavily_search, _iso_to_date, _safe_slug, _gemini_generate_image_bytes
+from utils import _tavily_search, _iso_to_date, _safe_slug, _gemini_generate_image_bytes, _save_image
 
 
 
@@ -452,11 +452,11 @@ def generate_and_place_images(state: State, config: RunnableConfig) -> dict:
         img_filename = spec["filename"]
         out_path = images_dir / img_filename     # ← renamed filename → img_filename to avoid shadowing
 
-        # generate only if needed
+        # generate only if needed (out_path never exists on GCS, so always uploads there)
         if not out_path.exists():
             try:
                 img_bytes = _gemini_generate_image_bytes(spec["prompt"])
-                out_path.write_bytes(img_bytes)
+                img_url = _save_image(img_bytes, images_dir, img_filename)
             except Exception as e:
                 # graceful fallback: keep doc usable
                 prompt_block = (
@@ -467,8 +467,10 @@ def generate_and_place_images(state: State, config: RunnableConfig) -> dict:
                 )
                 md = md.replace(placeholder, prompt_block)
                 continue
+        else:
+            img_url = f"images/{img_filename}"
 
-        img_md = f"![{spec['alt']}](images/{img_filename})\n*{spec['caption']}*"
+        img_md = f"![{spec['alt']}]({img_url})\n*{spec['caption']}*"
         md = md.replace(placeholder, img_md)
 
     md_path = output_dir / f"{_safe_slug(plan.blog_title)}.md"  # ← was Path(filename)

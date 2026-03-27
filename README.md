@@ -209,6 +209,7 @@ Generated files are saved to `outputs/` by default. You can change this per-requ
 { "output_dir": "my_custom_folder" }
 ```
 
+In Gcp it is stored in the cloud storage buckets.
 ---
 
 ## Troubleshooting
@@ -224,6 +225,14 @@ Generated files are saved to `outputs/` by default. You can change this per-requ
 
 ---
 
+## Containeraization Using Docker
+We are using the `compose.yml` and `Dockerfile` to generate the docker image of the application. Run the following command in the terminal to generate the image.  
+`make build`  
+
+This will build the container and also run it on `localhost:8000`. Once done you can interact with the app on `localhost:8000`
+  
+Run the command to push into docker hub `make push`
+
 ## Roadmap
 
 - [x] LangGraph agentic pipeline (router → research → orchestrator → workers → reducer)
@@ -232,77 +241,19 @@ Generated files are saved to `outputs/` by default. You can change this per-requ
 - [x] FastAPI backend
 - [x] TypeScript/Vite frontend
 - [x] Docker setup
-- [x] Fly.io deployment
+- [x] GCP Deployment
 - [ ] Authentication
 - [ ] Blog history / saved generations
 - [ ] Support for Anthropic Claude and Gemini as LLM backends
 
----
+## GCP Deployment
 
-## Deployment
+For detailed deployment instructions, see [GCP_DEPLOYMENT_STEPS_ADOC.MD](GCP_DEPLOYMENT_STEPS_ADHOC.MD) and [GCP_DEPLOYMENT_PRODUCTION.MD](GCP_DEPLOYMENT_PRODUCTION.MD)
 
-### Fly.io
+It is advisible to try the individual commands for local developement, make sure everything works, and then when you are ready, use the nuclear command to deploy in gcp.  
+  
+`make deploy-image`
 
-The app is fully Dockerised with a multi-stage build (Node builds the frontend, Python runs the backend). Generated blogs are stored on a persistent Fly volume so they survive restarts.
-
-#### 1. Install flyctl
-
-```bash
-curl -L https://fly.io/install.sh | sh
-fly auth login
-```
-
-#### 2. Launch the app (first time only)
-
-```bash
-fly launch
-```
-
-When prompted, accept the detected `fly.toml` config. Choose a region close to you (default: `iad` — US East).
-
-#### 3. Create the persistent volume
-
-```bash
-fly volumes create blog_outputs --size 1 --region iad
-```
-
-> The volume is mounted at `/app/outputs` inside the container, matching the path the app writes generated blogs to.
-
-#### 4. Set your API keys as secrets
-
-```bash
-fly secrets set \
-  OPENAI_API_KEY=sk-... \
-  TAVILY_API_KEY=tvly-... \
-  GOOGLE_API_KEY=...
-```
-
-`GOOGLE_API_KEY` is optional — skip it if you don't need image generation.
-
-#### 5. Deploy
-
-```bash
-fly deploy
-```
-
-The build runs the multi-stage Dockerfile: installs Node deps, builds the Vite frontend, installs Python deps, then starts the FastAPI server. Your app will be live at `https://<app-name>.fly.dev`.
-
-#### Subsequent deploys
-
-```bash
-fly deploy
-```
-
-#### Useful commands
-
-```bash
-fly logs          # stream live logs
-fly status        # machine status
-fly ssh console   # shell into the running container
-fly volumes list  # check your persistent volume
-```
-
----
 
 ## Tech stack
 

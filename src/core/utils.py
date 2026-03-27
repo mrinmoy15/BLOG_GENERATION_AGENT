@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-__all__ = ["_tavily_search", "_iso_to_date", "_safe_slug", "_gemini_generate_image_bytes"]
+__all__ = ["_tavily_search", "_iso_to_date", "_safe_slug", "_gemini_generate_image_bytes", "_save_image"]
 
 from typing import List, Dict, Any
 from datetime import date
+from pathlib import Path
 import re
 from langchain_community.tools.tavily_search import TavilySearchResults
 import os
@@ -80,3 +81,25 @@ def _gemini_generate_image_bytes(prompt: str) -> bytes:
         raise RuntimeError("Image bytes are empty.")
 
     return image_bytes
+
+
+def _save_image(img_bytes: bytes, images_dir: Path, img_filename: str) -> str:
+    """
+    Saves image bytes to local disk or GCS depending on GCS_BUCKET env var.
+    Returns the URL/path to embed in markdown.
+
+    Local:  images/{filename}
+    GCS:    https://storage.googleapis.com/{bucket}/images/{filename}
+    """
+    bucket_name = os.environ.get("GCS_BUCKET")
+
+    if bucket_name:
+        from google.cloud import storage
+        client = storage.Client()
+        blob = client.bucket(bucket_name).blob(f"images/{img_filename}")
+        blob.upload_from_string(img_bytes, content_type="image/png")
+        return f"https://storage.googleapis.com/{bucket_name}/images/{img_filename}"
+
+    images_dir.mkdir(parents=True, exist_ok=True)
+    (images_dir / img_filename).write_bytes(img_bytes)
+    return f"images/{img_filename}"
