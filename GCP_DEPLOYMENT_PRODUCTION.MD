@@ -18,17 +18,19 @@ my-terraform/
 Create the files that are shown in the folder structure. The contents in the file is available in the repo.
 
 #### Step4 — Deployment  
-Set the temporary env variables in your powershell  
+Set the temporary env variables in your powershell
+```powershell
+$env:OPENAI_API_KEY = "your-actual-openai-key"
+$env:GOOGLE_API_KEY = "your-actual-google-key"
+$env:TAVILY_API_KEY = "your-actual-tavily-key"
+```
 
-`$env:TF_VAR_openai_api_key = "your-actual-openai-key"` 
-   
-`$env:TF_VAR_google_api_key = "your-actual-google-key"`
-    
-`$env:TF_VAR_tavily_api_key = "your-actual-tavily-key"`  
-  
-Do authentication:  
-`gcloud auth application-default login`  
- 
+Do authentication:
+```powershell
+gcloud auth application-default login
+```
 
-Run the Deploy command:  
-`make deploy-image`
+Run the Deploy command:
+```powershell
+make deploy-image
+```

@@ -6,6 +6,8 @@ import json
 from datetime import date
 from typing import Generator
 
+import logging
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
@@ -14,6 +16,9 @@ from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from pathlib import Path
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 _HERE     = os.path.dirname(os.path.abspath(__file__))
 _SRC_CORE = os.path.abspath(os.path.join(_HERE, "../src/core"))
@@ -134,6 +139,7 @@ def _stream_generation(topic: str, model: str, output_dir: str) -> Generator[str
         yield sse("result", {"filename": filename, "markdown": md_content})
 
     except Exception as exc:
+        logger.exception("Generation pipeline failed")
         yield sse("error", {"message": str(exc)})
 
 

@@ -8,7 +8,8 @@ param(
     [string]$ProjectNumber,
     [string]$Region = "us-central1",
     [string]$BucketName = "ai_blog_generator_outputs",
-    [string]$ImageTag
+    [string]$ImageTag,
+    [switch]$SkipFirebase
 )
 
 # ────────────────────────────────────────
@@ -102,25 +103,21 @@ if ($cloudRunExists) {
 # Step 4 -- Check & Import Secrets
 # ────────────────────────────────────────
 Write-Host ""
-Write-Host "[CHECK] Checking if secrets exist..." -ForegroundColor Yellow
-$secretExists = gcloud secrets describe OPENAI_API_KEY 2>$null
-if ($secretExists) {
-    Write-Host "[OK] Secrets exist -- importing into Terraform state..." -ForegroundColor Green
-    terraform import @tfVars "google_secret_manager_secret.openai_key[0]" "projects/$ProjectId/secrets/OPENAI_API_KEY" 2>$null
-    terraform import @tfVars "google_secret_manager_secret.google_key[0]" "projects/$ProjectId/secrets/GOOGLE_API_KEY" 2>$null
-    terraform import @tfVars "google_secret_manager_secret.tavily_key[0]" "projects/$ProjectId/secrets/TAVILY_API_KEY" 2>$null
-
-    # Auto set create_secrets to false
-    $tfvarsPath = Join-Path $terraformDir "terraform.tfvars"
-    (Get-Content $tfvarsPath) -replace 'create_secrets\s*=\s*true', 'create_secrets = false' | Set-Content $tfvarsPath
-    Write-Host "[OK] Set create_secrets = false in terraform.tfvars" -ForegroundColor Green
+Write-Host "[CHECK] Checking if secrets exist in Terraform state..." -ForegroundColor Yellow
+$secretInState = terraform state list 2>$null | Select-String "google_secret_manager_secret.openai_key"
+if (-not $secretInState) {
+    $secretExists = gcloud secrets describe OPENAI_API_KEY 2>$null
+    if ($secretExists) {
+        Write-Host "[OK] Secrets exist outside Terraform -- importing into state..." -ForegroundColor Green
+        terraform import @tfVars "google_secret_manager_secret.openai_key[0]" "projects/$ProjectId/secrets/OPENAI_API_KEY" 2>$null
+        terraform import @tfVars "google_secret_manager_secret.google_key[0]" "projects/$ProjectId/secrets/GOOGLE_API_KEY" 2>$null
+        terraform import @tfVars "google_secret_manager_secret.tavily_key[0]" "projects/$ProjectId/secrets/TAVILY_API_KEY" 2>$null
+        Write-Host "[OK] Secrets imported" -ForegroundColor Green
+    } else {
+        Write-Host "[NEW] Secrets do not exist -- Terraform will create them" -ForegroundColor Blue
+    }
 } else {
-    Write-Host "[NEW] Secrets do not exist -- Terraform will create them" -ForegroundColor Blue
-
-    # Auto set create_secrets to true
-    $tfvarsPath = Join-Path $terraformDir "terraform.tfvars"
-    (Get-Content $tfvarsPath) -replace 'create_secrets\s*=\s*false', 'create_secrets = true' | Set-Content $tfvarsPath
-    Write-Host "[OK] Set create_secrets = true in terraform.tfvars" -ForegroundColor Blue
+    Write-Host "[OK] Secrets already in Terraform state -- skipping import" -ForegroundColor Green
 }
 
 # ────────────────────────────────────────
@@ -151,17 +148,22 @@ gcloud run services add-iam-policy-binding blog-generation-agent `
 Write-Host "[OK] Firebase Hosting IAM binding set" -ForegroundColor Green
 
 # ────────────────────────────────────────
-# Step 7 -- Deploy Firebase Hosting
+# Step 7 -- Deploy Firebase Hosting (skippable)
 # ────────────────────────────────────────
-Write-Host ""
-Write-Host "[FIREBASE] Deploying Firebase Hosting..." -ForegroundColor Yellow
 Set-Location $PSScriptRoot
-firebase deploy --only hosting
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "[WARN] Firebase deploy failed -- hosting URL may not be updated" -ForegroundColor Yellow
+if ($SkipFirebase) {
+    Write-Host ""
+    Write-Host "[FIREBASE] Skipping Firebase Hosting deploy (-SkipFirebase flag set)" -ForegroundColor Gray
 } else {
-    Write-Host "[OK] Firebase Hosting deployed" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "[FIREBASE] Deploying Firebase Hosting..." -ForegroundColor Yellow
+    firebase deploy --only hosting
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "[WARN] Firebase deploy failed -- hosting URL may not be updated" -ForegroundColor Yellow
+    } else {
+        Write-Host "[OK] Firebase Hosting deployed" -ForegroundColor Green
+    }
 }
 
 Write-Host ""
@@ -169,3 +171,4 @@ Write-Host "========================================" -ForegroundColor Green
 Write-Host "   Deployment Complete!                 " -ForegroundColor Green
 Write-Host "   App URL: https://$ProjectId.web.app  " -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
+exit 0
