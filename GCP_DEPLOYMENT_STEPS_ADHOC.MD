@@ -100,7 +100,5 @@ gcloud run deploy blog-generation-agent \
 
   
 #### Step 6: Get the application link   
-You see the link in your terminal once deployed successfully. Here is the link for this app I deployed  
-
-(AI-Blog-Generator)[https://norse-rampart-273715.web.app/]
+You see the link in your terminal once deployed successfully. The app will be available at the Cloud Run service URL returned by `gcloud run deploy`.
 

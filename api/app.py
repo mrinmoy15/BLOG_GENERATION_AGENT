@@ -185,7 +185,9 @@ def generate_sync(req: GenerateRequest):
         final_md = final_state.get("final", "")
 
         from src.core.utils import _safe_slug
-        filename = f"{_safe_slug(final_state.get('plan', {}).blog_title if final_state.get('plan') else 'blog')}.md"
+        plan = final_state.get('plan')
+        title = getattr(plan, 'blog_title', None) or (plan.get('blog_title') if isinstance(plan, dict) else None) or 'blog'
+        filename = f"{_safe_slug(title)}.md"
 
         return GenerateResponse(status="ok", filename=filename, final_md=final_md)
 

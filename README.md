@@ -62,14 +62,11 @@ Progress streams live to the UI via Server-Sent Events (SSE) so you can watch ea
 ├── my-terraform/               # Terraform IaC for GCP infrastructure
 │   ├── main.tf
 │   ├── variables.tf
-│   ├── outputs.tf
-│   └── terraform.tfvars
+│   └── outputs.tf
 │
 ├── outputs/                    # generated .md files saved here
 ├── Dockerfile
 ├── compose.yaml
-├── firebase.json               # Firebase Hosting config (Cloud Run rewrite)
-├── .firebaserc                 # Firebase project binding
 ├── Makefile                    # build / deploy shortcuts
 ├── deploy.ps1                  # PowerShell deploy script
 ├── new_image_deploy.ps1        # PowerShell script for image re-deploy
@@ -275,43 +272,9 @@ It is advisible to try the individual commands for local developement, make sure
   
 `make deploy-image`
 
-## Firebase Hosting (Public URL)
+## App Hosting
 
-Instead of the auto-generated Cloud Run URL, the app is served through Firebase Hosting at:
-
-```
-https://norse-rampart-273715.web.app
-```
-
-Firebase Hosting acts as a clean front-end that proxies all traffic to the Cloud Run service via the `rewrites` rule in `firebase.json`. There is no static content — every request is forwarded to Cloud Run.
-
-### One-time setup (run manually in terminal)
-
-```bash
-# 1. Install Firebase CLI
-make firebase-install
-
-# 2. Log in
-firebase login
-
-# 3. Add Firebase to your GCP project via console.firebase.google.com
-#    (the CLI addfirebase command requires interactive prompts)
-
-# 4. Init hosting — must be run directly, not via make (interactive prompts)
-firebase init hosting --project norse-rampart-273715
-# When prompted: public dir → "."  |  single-page app → N  |  overwrite → N
-```
-
-### Deploy hosting
-
-```bash
-make firebase-deploy
-```
-
-> Firebase Hosting is free. The Cloud Run service still handles all compute — Firebase just provides the nicer URL and global CDN edge for the initial connection.
-  
-  
-Here is the final link of the [app url](https://norse-rampart-273715.web.app)
+The frontend and API are served from the same Cloud Run service. Deploy using `make deploy-image` and access the URL returned by the deployment script.
 
 ---
 

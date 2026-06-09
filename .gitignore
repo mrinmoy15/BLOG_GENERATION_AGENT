@@ -4,10 +4,6 @@ __pycache__/
 *$py.class
 notes.txt
 
-# Firebase
-.firebase/
-firebase-debug.log
-
 # output images
 outputs/
 
@@ -205,6 +201,11 @@ cython_debug/
 
 # Ruff stuff:
 .ruff_cache/
+
+# Firebase
+.firebase/
+.firebaserc
+firebase.json
 
 # PyPI configuration file
 .pypirc

@@ -5,17 +5,15 @@
 - Add to PATH using: `[System.Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";C:\terraform", "User")`
 - Restart your terminal and verify: `terraform -version` 
   
-#### Step 2 — Create Project Structure  
+#### Step 2 — Project Structure  
+The Terraform files are already in the repo:
 ```
 my-terraform/
 ├── main.tf
 ├── variables.tf
-├── outputs.tf
-└── terraform.tfvars
+└── outputs.tf
 ```
-  
-#### Step 3 — Create the Terraform Files  
-Create the files that are shown in the folder structure. The contents in the file is available in the repo.
+All variable values are passed at deploy time via environment variables — no `terraform.tfvars` file is needed.
 
 #### Step4 — Deployment  
 Set the temporary env variables in your powershell
