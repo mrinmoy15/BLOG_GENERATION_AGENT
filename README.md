@@ -41,6 +41,8 @@ Progress streams live to the UI via Server-Sent Events (SSE) so you can watch ea
 │   └── schemas.py              # request/response models
 │
 ├── frontend/
+│   ├── Dockerfile              # nginx image: builds Vite + proxies API
+│   ├── nginx.conf              # nginx config template (BACKEND_URL injected at runtime)
 │   ├── index.html
 │   ├── package.json
 │   ├── package-lock.json
@@ -68,8 +70,7 @@ Progress streams live to the UI via Server-Sent Events (SSE) so you can watch ea
 ├── Dockerfile
 ├── compose.yaml
 ├── Makefile                    # build / deploy shortcuts
-├── deploy.ps1                  # PowerShell deploy script
-├── new_image_deploy.ps1        # PowerShell script for image re-deploy
+├── deploy.ps1                  # PowerShell: build images + IAM bootstrap + Terraform deploy
 ├── Explore.ipynb               # exploratory notebook
 ├── pyproject.toml
 ├── requirements.txt
@@ -141,6 +142,8 @@ You need **two terminals** running simultaneously.
 ```bash
 # From the project root
 python -m uvicorn api.app:app --reload --port 8000
+# or
+make run-backend
 ```
 
 The API will be available at:
@@ -151,8 +154,9 @@ The API will be available at:
 ### Terminal 2 — Frontend (Vite dev server)
 
 ```bash
-cd frontend
-npm run dev
+cd frontend && npm run dev
+# or (from project root)
+make run-frontend
 ```
 
 The UI will be available at `http://localhost:5173`.
@@ -227,7 +231,8 @@ Generated files are saved to `outputs/` by default. You can change this per-requ
 { "output_dir": "my_custom_folder" }
 ```
 
-In Gcp it is stored in the cloud storage buckets.
+In GCP it is stored in the Cloud Storage bucket defined by `GCS_BUCKET` in your `.env`.
+
 ---
 
 ## Troubleshooting
@@ -243,13 +248,153 @@ In Gcp it is stored in the cloud storage buckets.
 
 ---
 
-## Containeraization Using Docker
-We are using the `compose.yml` and `Dockerfile` to generate the docker image of the application. Run the following command in the terminal to generate the image.  
-`make build`  
+## Run with Docker Compose (alternative to the two-terminal setup)
 
-This will build the container and also run it on `localhost:8000`. Once done you can interact with the app on `localhost:8000`
-  
-Run the command to push into docker hub `make push`
+If you have Docker installed, this builds and runs both services with one command — no separate Python or Node.js setup needed:
+
+```bash
+make build
+```
+
+| Service | URL |
+|---|---|
+| Frontend (nginx) | http://localhost:5173 |
+| Backend API (FastAPI) | http://localhost:8000 |
+
+The frontend container proxies all API calls (`/health`, `/generate`, `/blogs`, `/outputs`) to the backend container, so there are no CORS issues.
+
+```bash
+make down      # stop both containers
+make logs      # tail logs from both containers
+```
+
+---
+
+## Deploy to Cloud Run
+
+### Prerequisites — install once
+
+| Tool | Install |
+|---|---|
+| Docker Desktop | https://docker.com |
+| Google Cloud SDK | https://cloud.google.com/sdk/docs/install |
+| Terraform | https://developer.hashicorp.com/terraform/install — download AMD64 for Windows, extract to `C:\terraform\` |
+| Docker Hub account | https://hub.docker.com — free |
+
+After installing Terraform, add it to PATH permanently and verify:
+```powershell
+[System.Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";C:\terraform", "User")
+# restart your terminal, then:
+terraform -version
+```
+
+---
+
+### Step 1 — GCP project setup
+
+Go to [console.cloud.google.com](https://console.cloud.google.com), create a project (or select an existing one), and **enable billing**.
+
+Note down your **Project ID** and **Project Number** (visible on the project dashboard).
+
+---
+
+### Step 2 — Authenticate with GCP
+
+```powershell
+gcloud auth login
+gcloud auth application-default login
+gcloud config set project YOUR_PROJECT_ID
+```
+
+---
+
+### Step 3 — Log in to Docker Hub
+
+```powershell
+docker login
+```
+
+---
+
+### Step 4 — Set your API keys as environment variables
+
+These get stored in GCP Secret Manager during deployment:
+```powershell
+$env:OPENAI_API_KEY = "sk-..."
+$env:GOOGLE_API_KEY = "AIza..."
+$env:TAVILY_API_KEY = "tvly-..."
+```
+
+---
+
+### Step 5 — Update `.env` with your GCP values
+
+Open `.env` and fill in these fields:
+```env
+DOCKER_USERNAME=your-dockerhub-username
+APP_NAME=ai-blog-generator
+APP_VERSION=1.0.0
+
+GCP_PROJECT_ID=your-project-id
+GCP_PROJECT_NUMBER=your-project-number    # gcloud projects describe YOUR_PROJECT_ID --format='value(projectNumber)'
+GCP_REGION=us-central1
+GCS_BUCKET=your-unique-bucket-name        # must be globally unique across all GCP projects
+```
+
+---
+
+### Step 6 — Deploy
+
+Run this single command from the project root:
+```powershell
+make deploy-image
+```
+
+This single script (`deploy.ps1`) does everything in order:
+1. Build `ai-blog-generator-backend:TAG` from the root `Dockerfile`
+2. Build `ai-blog-generator-frontend:TAG` from `frontend/Dockerfile`
+3. Push both images to Docker Hub
+4. **Bootstrap IAM** — checks which of `roles/editor`, `roles/iam.securityAdmin`, and `roles/secretmanager.admin` are already granted; adds only the missing ones. Only waits 60 s for propagation when new bindings are actually added — re-deploys skip the wait entirely
+5. Run Terraform — provisions the backend Cloud Run service first, then the frontend Cloud Run service with `BACKEND_URL` automatically wired to the backend's URI
+6. Print both URLs when done
+
+> **First deploy only:** The bootstrap requires your account to already be a project owner (true if you created the GCP project). If it fails, you'll see the exact `gcloud` command to ask your project owner to run once.
+
+---
+
+### Step 7 — Get your URLs
+
+Both URLs are printed at the end of the deployment output:
+```
+========================================
+   Deployment Complete!
+   Frontend : https://blog-generation-agent-frontend-xxxx-uc.a.run.app
+   Backend  : https://blog-generation-agent-xxxx-uc.a.run.app
+========================================
+```
+
+You can also retrieve them at any time:
+```powershell
+# Frontend (share this with users)  — replace APP_NAME and GCP_REGION with your .env values
+gcloud run services describe YOUR_APP_NAME-frontend --region=YOUR_GCP_REGION --format='value(uri)'
+
+# Backend API
+gcloud run services describe YOUR_APP_NAME --region=YOUR_GCP_REGION --format='value(uri)'
+```
+
+**The Frontend URL is the one you open in a browser.** It serves the UI and proxies all API calls to the backend — users only ever need this one URL.
+
+---
+
+### Re-deploying after code changes
+
+```powershell
+make deploy-image
+```
+
+A new timestamped tag is auto-generated. Both images are rebuilt, pushed, and both Cloud Run services are updated in one command.
+
+---
 
 ## Roadmap
 
@@ -263,21 +408,6 @@ Run the command to push into docker hub `make push`
 - [ ] Authentication
 - [ ] Blog history / saved generations
 - [ ] Support for Anthropic Claude and Gemini as LLM backends
-
-## GCP Deployment
-
-For detailed deployment instructions, see [GCP_DEPLOYMENT_STEPS_ADOC.MD](GCP_DEPLOYMENT_STEPS_ADHOC.MD) and [GCP_DEPLOYMENT_PRODUCTION.MD](GCP_DEPLOYMENT_PRODUCTION.MD)
-
-It is advisible to try the individual commands for local developement, make sure everything works, and then when you are ready, use the nuclear command to deploy in gcp.  
-  
-`make deploy-image`
-
-## App Hosting
-
-The frontend and API are served from the same Cloud Run service. Deploy using `make deploy-image` and access the URL returned by the deployment script.
-
----
-
 
 ## Tech stack
 

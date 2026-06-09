@@ -2,53 +2,54 @@
 include .env
 export
 
-# Variables
-IMAGE_NAME = $(DOCKER_USERNAME)/ai-blog-generator
-VERSION = $(APP_VERSION)
+BACKEND_IMAGE  = $(DOCKER_USERNAME)/$(APP_NAME)-backend
+FRONTEND_IMAGE = $(DOCKER_USERNAME)/$(APP_NAME)-frontend
+VERSION        = $(APP_VERSION)
 
-.PHONY: build run down logs push clean deploy-image deploy-initial
+.PHONY: build run run-backend run-frontend down logs push clean release deploy-image
 
-## Build the Docker image
+## Start FastAPI backend locally (with hot reload)
+run-backend:
+	python -m uvicorn api.app:app --reload --port 8000
+
+## Start Vite frontend dev server locally
+run-frontend:
+	cd frontend && npm run dev
+
+## Build both backend and frontend images
 build:
-	docker-compose up --build
+	docker compose up --build
 
-## Run the container without rebuilding
+## Run both containers without rebuilding
 run:
 	docker compose up
 
-## Stop and remove the container
+## Stop and remove both containers
 down:
 	docker compose down
 
-## View container logs
+## Tail logs from both containers
 logs:
 	docker compose logs -f
 
-## Push image to Docker Hub
+## Push both images to Docker Hub
 push:
 	docker compose push
 
-## Remove image locally
+## Remove both images locally
 clean:
-	docker rmi $(IMAGE_NAME):$(VERSION)
+	docker rmi $(BACKEND_IMAGE):$(VERSION) || true
+	docker rmi $(FRONTEND_IMAGE):$(VERSION) || true
 
-## Build and push in one step
+## Build and push both images in one step
 release: build push
 
-## Build, push and deploy to GCP Cloud Run via Terraform
+## Build images, push, and deploy to GCP Cloud Run via Terraform
 deploy-image:
-	powershell -ExecutionPolicy Bypass -File ./new_image_deploy.ps1 \
+	powershell -ExecutionPolicy Bypass -File ./deploy.ps1 \
 		-ProjectId "$(GCP_PROJECT_ID)" \
 		-ProjectNumber "$(GCP_PROJECT_NUMBER)" \
 		-Region "$(GCP_REGION)" \
 		-BucketName "$(GCS_BUCKET)" \
-		-ImageTag "$(VERSION)"
-
-## First-time setup: build, push, deploy Cloud Run
-deploy-initial:
-	powershell -ExecutionPolicy Bypass -File ./new_image_deploy.ps1 \
-		-ProjectId "$(GCP_PROJECT_ID)" \
-		-ProjectNumber "$(GCP_PROJECT_NUMBER)" \
-		-Region "$(GCP_REGION)" \
-		-BucketName "$(GCS_BUCKET)" \
-		-ImageTag "$(VERSION)"
+		-DockerUsername "$(DOCKER_USERNAME)" \
+		-ImageName "$(APP_NAME)"
