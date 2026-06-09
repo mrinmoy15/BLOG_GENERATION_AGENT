@@ -13,6 +13,28 @@ provider "google" {
 }
 
 # ────────────────────────────────────────
+# Deployer IAM — grant the account running
+# Terraform the roles it needs
+# ────────────────────────────────────────
+resource "google_project_iam_member" "deployer_editor" {
+  project = var.project_id
+  role    = "roles/editor"
+  member  = "user:${var.deployer_account}"
+}
+
+resource "google_project_iam_member" "deployer_iam_admin" {
+  project = var.project_id
+  role    = "roles/iam.securityAdmin"
+  member  = "user:${var.deployer_account}"
+}
+
+resource "google_project_iam_member" "deployer_secret_admin" {
+  project = var.project_id
+  role    = "roles/secretmanager.admin"
+  member  = "user:${var.deployer_account}"
+}
+
+# ────────────────────────────────────────
 # Enable APIs
 # ────────────────────────────────────────
 resource "google_project_service" "cloud_run" {
@@ -142,12 +164,12 @@ resource "google_secret_manager_secret_iam_member" "tavily_access" {
 # Cloud Run Service
 # ────────────────────────────────────────
 resource "google_cloud_run_v2_service" "blog_agent" {
-  name     = "blog-generation-agent"
+  name     = var.app_name
   location = var.region
 
   template {
     containers {
-      image = "docker.io/mrinmoy15/ai-blog-generator:${var.image_tag}"
+      image = "docker.io/${var.docker_username}/ai-blog-generator-backend:${var.image_tag}"
 
       ports {
         container_port = 8000
@@ -206,10 +228,55 @@ resource "google_cloud_run_v2_service" "blog_agent" {
 }
 
 # ────────────────────────────────────────
-# Allow unauthenticated access
+# Allow unauthenticated access — backend
 # ────────────────────────────────────────
 resource "google_cloud_run_v2_service_iam_member" "public_access" {
   name     = google_cloud_run_v2_service.blog_agent.name
+  location = var.region
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
+# ────────────────────────────────────────
+# Frontend Cloud Run Service
+# ────────────────────────────────────────
+resource "google_cloud_run_v2_service" "blog_agent_frontend" {
+  name     = "${var.app_name}-frontend"
+  location = var.region
+
+  template {
+    containers {
+      image = "docker.io/${var.docker_username}/ai-blog-generator-frontend:${var.frontend_image_tag}"
+
+      ports {
+        container_port = 80
+      }
+
+      resources {
+        limits = {
+          memory = "512Mi"
+          cpu    = "1"
+        }
+      }
+
+      env {
+        name  = "BACKEND_URL"
+        value = google_cloud_run_v2_service.blog_agent.uri
+      }
+    }
+  }
+
+  depends_on = [
+    google_project_service.cloud_run,
+    google_cloud_run_v2_service.blog_agent,
+  ]
+}
+
+# ────────────────────────────────────────
+# Allow unauthenticated access — frontend
+# ────────────────────────────────────────
+resource "google_cloud_run_v2_service_iam_member" "frontend_public_access" {
+  name     = google_cloud_run_v2_service.blog_agent_frontend.name
   location = var.region
   role     = "roles/run.invoker"
   member   = "allUsers"

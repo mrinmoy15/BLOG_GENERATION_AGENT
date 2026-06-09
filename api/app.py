@@ -10,7 +10,7 @@ import logging
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
@@ -245,18 +245,6 @@ def delete_blog(filename: str, output_dir: str = "outputs"):
 
     file_path.unlink()
     return {"status": "deleted", "filename": safe_name}
-
-
-_FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
-
-
-@app.get("/{full_path:path}", include_in_schema=False)
-def serve_frontend(full_path: str):
-    """Serve the Vite SPA — return the requested file or fall back to index.html."""
-    file_path = _FRONTEND_DIST / full_path
-    if file_path.exists() and file_path.is_file():
-        return FileResponse(file_path)
-    return FileResponse(_FRONTEND_DIST / "index.html")
 
 
 if __name__ == "__main__":

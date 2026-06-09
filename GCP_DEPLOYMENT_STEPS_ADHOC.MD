@@ -17,7 +17,7 @@ Once install is done, to add to path permanently run the following:
   
 Create the folder to save credential locally  
 ```bash
-New-Item -ItemType Directory -Force -Path "$env:APPDATA\Roaming\gcloud\legacy_credentials\mrinmoybhuyan007@gmail.com"
+New-Item -ItemType Directory -Force -Path "$env:APPDATA\Roaming\gcloud\legacy_credentials\YOUR_EMAIL@gmail.com"
 ```
 
 Grant full permissions 
@@ -34,7 +34,7 @@ gcloud config set project YOUR_PROJECT_ID
 #### Step 3 — Create a GCS bucket for images  
 Run the following commands
 ```bash 
-gcloud storage buckets create gs://your_bucket_name --location=us-central1
+gcloud storage buckets create gs://YOUR_BUCKET_NAME --location=YOUR_REGION
 ```  
 
 Make images publicly readable  
@@ -86,13 +86,13 @@ gcloud secrets add-iam-policy-binding TAVILY_API_KEY --member="serviceAccount:$P
 Deploy   
    
 ```bash
-gcloud run deploy blog-generation-agent \
-  --image=docker.io/mrinmoy15/ai-blog-generator:1.0.0 \
+gcloud run deploy YOUR_APP_NAME \
+  --image=docker.io/YOUR_DOCKER_USERNAME/YOUR_APP_NAME:YOUR_TAG \
   --platform=managed \
-  --region=us-central1 \
+  --region=YOUR_REGION \
   --port=8000 \
   --allow-unauthenticated \
-  --set-env-vars="GCS_BUCKET=ai_blog_generator_outputs" \
+  --set-env-vars="GCS_BUCKET=YOUR_BUCKET_NAME" \
   --set-secrets="OPENAI_API_KEY=OPENAI_API_KEY:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,TAVILY_API_KEY=TAVILY_API_KEY:latest" \
   --memory=2Gi \
   --cpu=2
