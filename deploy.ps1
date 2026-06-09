@@ -8,8 +8,7 @@ param(
     [string]$ProjectNumber,
     [string]$Region = "us-central1",
     [string]$BucketName = "ai_blog_generator_outputs",
-    [string]$ImageTag,
-    [switch]$SkipFirebase
+    [string]$ImageTag
 )
 
 # ────────────────────────────────────────
@@ -134,41 +133,25 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # ────────────────────────────────────────
-# Step 6 -- Grant Firebase Hosting permission to invoke Cloud Run
+# Step 6 -- Retrieve Cloud Run URL
 # ────────────────────────────────────────
 Write-Host ""
-Write-Host "[IAM] Granting Firebase Hosting service agent Cloud Run invoker role..." -ForegroundColor Yellow
-$firebaseSA = "service-$ProjectNumber@gcp-sa-firebasehosting.iam.gserviceaccount.com"
-gcloud run services add-iam-policy-binding blog-generation-agent `
-    --region=$Region `
-    --member="serviceAccount:$firebaseSA" `
-    --role="roles/run.invoker" `
-    --project=$ProjectId 2>$null
-
-Write-Host "[OK] Firebase Hosting IAM binding set" -ForegroundColor Green
-
-# ────────────────────────────────────────
-# Step 7 -- Deploy Firebase Hosting (skippable)
-# ────────────────────────────────────────
-Set-Location $PSScriptRoot
-if ($SkipFirebase) {
-    Write-Host ""
-    Write-Host "[FIREBASE] Skipping Firebase Hosting deploy (-SkipFirebase flag set)" -ForegroundColor Gray
+Write-Host "[INFO] Retrieving Cloud Run URL..." -ForegroundColor Yellow
+$cloudRunUrl = gcloud run services describe blog-generation-agent --region=$Region --format='value(uri)' --project=$ProjectId 2>$null
+if ($LASTEXITCODE -ne 0 -or -not $cloudRunUrl) {
+    Write-Host "[WARN] Could not determine Cloud Run URL automatically" -ForegroundColor Yellow
+    $cloudRunUrl = "unknown"
 } else {
-    Write-Host ""
-    Write-Host "[FIREBASE] Deploying Firebase Hosting..." -ForegroundColor Yellow
-    firebase deploy --only hosting
-
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "[WARN] Firebase deploy failed -- hosting URL may not be updated" -ForegroundColor Yellow
-    } else {
-        Write-Host "[OK] Firebase Hosting deployed" -ForegroundColor Green
-    }
+    Write-Host "[OK] Cloud Run URL: $cloudRunUrl" -ForegroundColor Green
 }
 
-Write-Host ""
+# ────────────────────────────────────────
+# Deploy complete
+# ────────────────────────────────────────
+# ────────────────────────────────────────
+
 Write-Host "========================================" -ForegroundColor Green
 Write-Host "   Deployment Complete!                 " -ForegroundColor Green
-Write-Host "   App URL: https://$ProjectId.web.app  " -ForegroundColor Green
+Write-Host "   App URL: $cloudRunUrl" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 exit 0

@@ -6,7 +6,7 @@ export
 IMAGE_NAME = $(DOCKER_USERNAME)/ai-blog-generator
 VERSION = $(APP_VERSION)
 
-.PHONY: build run down logs push clean firebase-install firebase-deploy deploy-image deploy-initial
+.PHONY: build run down logs push clean deploy-image deploy-initial
 
 ## Build the Docker image
 build:
@@ -35,25 +35,16 @@ clean:
 ## Build and push in one step
 release: build push
 
-## Install Firebase CLI (one-time)
-firebase-install:
-	npm install -g firebase-tools
-
-## Deploy Firebase Hosting (public-facing URL fronting Cloud Run)
-firebase-deploy:
-	firebase deploy --only hosting
-
-## Build, push and deploy to GCP Cloud Run via Terraform (skips Firebase Hosting)
+## Build, push and deploy to GCP Cloud Run via Terraform
 deploy-image:
 	powershell -ExecutionPolicy Bypass -File ./new_image_deploy.ps1 \
 		-ProjectId "$(GCP_PROJECT_ID)" \
 		-ProjectNumber "$(GCP_PROJECT_NUMBER)" \
 		-Region "$(GCP_REGION)" \
 		-BucketName "$(GCS_BUCKET)" \
-		-ImageTag "$(VERSION)" \
-		-SkipFirebase
+		-ImageTag "$(VERSION)"
 
-## First-time setup: build, push, deploy Cloud Run + Firebase Hosting
+## First-time setup: build, push, deploy Cloud Run
 deploy-initial:
 	powershell -ExecutionPolicy Bypass -File ./new_image_deploy.ps1 \
 		-ProjectId "$(GCP_PROJECT_ID)" \

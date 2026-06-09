@@ -10,8 +10,7 @@ param(
     [string]$BucketName = "ai_blog_generator_outputs",
     [string]$DockerUsername = "mrinmoy15",
     [string]$ImageName = "ai-blog-generator",
-    [string]$ImageTag,
-    [switch]$SkipFirebase
+    [string]$ImageTag
 )
 
 # ────────────────────────────────────────
@@ -30,7 +29,6 @@ $FullImageName = "$DockerUsername/$ImageName`:$ImageTag"
 # ────────────────────────────────────────
 $rootDir       = $PSScriptRoot
 $terraformDir  = Join-Path $rootDir "my-terraform"
-$tfvarsPath    = Join-Path $terraformDir "terraform.tfvars"
 $deployScript  = Join-Path $rootDir "deploy.ps1"
 $dockerfileDir = $rootDir
 
@@ -52,11 +50,6 @@ if (-not (Test-Path $terraformDir)) {
     exit 1
 }
 
-if (-not (Test-Path $tfvarsPath)) {
-    Write-Host "[ERROR] terraform.tfvars not found at $tfvarsPath" -ForegroundColor Red
-    exit 1
-}
-
 if (-not (Test-Path $deployScript)) {
     Write-Host "[ERROR] deploy.ps1 not found at $deployScript" -ForegroundColor Red
     exit 1
@@ -71,8 +64,7 @@ if (-not (Test-Path $dockerfileDir)) {
 # Step 1 -- Docker Build
 # ────────────────────────────────────────
 Write-Host "[BUILD] Building Docker image: $FullImageName" -ForegroundColor Yellow
-$cloudRunUrl = $env:CLOUD_RUN_URL
-docker build -t $FullImageName --build-arg VITE_API_URL=$cloudRunUrl $dockerfileDir
+docker build -t $FullImageName $dockerfileDir
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[ERROR] Docker build failed!" -ForegroundColor Red
@@ -98,11 +90,7 @@ Write-Host "[OK] Docker push successful!" -ForegroundColor Green
 # ────────────────────────────────────────
 Write-Host ""
 Write-Host "[DEPLOY] Running deploy.ps1..." -ForegroundColor Yellow
-if ($SkipFirebase) {
-    & $deployScript -ProjectId $ProjectId -ProjectNumber $ProjectNumber -Region $Region -BucketName $BucketName -ImageTag $ImageTag -SkipFirebase
-} else {
-    & $deployScript -ProjectId $ProjectId -ProjectNumber $ProjectNumber -Region $Region -BucketName $BucketName -ImageTag $ImageTag
-}
+& $deployScript -ProjectId $ProjectId -ProjectNumber $ProjectNumber -Region $Region -BucketName $BucketName -ImageTag $ImageTag
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[ERROR] Deployment failed!" -ForegroundColor Red
