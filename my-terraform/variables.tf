@@ -4,7 +4,7 @@ variable "project_id" {
 }
 
 variable "app_name" {
-  description = "Application name — used as Cloud Run service name prefix and image name base"
+  description = "Application name - used as Cloud Run service name prefix and image name base"
   type        = string
 }
 
@@ -20,7 +20,7 @@ variable "region" {
 }
 
 variable "bucket_name" {
-  description = "GCS Bucket Name — must be globally unique across all GCP projects"
+  description = "GCS Bucket Name - must be globally unique across all GCP projects"
   type        = string
 }
 
