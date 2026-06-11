@@ -6,7 +6,7 @@ BACKEND_IMAGE  = $(DOCKER_USERNAME)/$(APP_NAME)-backend
 FRONTEND_IMAGE = $(DOCKER_USERNAME)/$(APP_NAME)-frontend
 VERSION        = $(APP_VERSION)
 
-.PHONY: build run run-backend run-frontend down logs push clean release deploy-image
+.PHONY: build run run-backend run-frontend down logs push clean release deploy-image bootstrap-gcp
 
 ## Start FastAPI backend locally (with hot reload)
 run-backend:
@@ -44,7 +44,16 @@ clean:
 ## Build and push both images in one step
 release: build push
 
+## Create GCP project, link billing account, and grant deployer IAM owner (run once before terraform apply)
+## If your account cannot link billing (org-managed), use: make bootstrap-gcp SKIP_BILLING=1
+bootstrap-gcp:
+	powershell -ExecutionPolicy Bypass -File ./my-terraform/bootstrap.ps1 \
+		-ProjectId "$(GCP_PROJECT_ID)" \
+		-BillingAccount "$(BILLING_ACCOUNT)" \
+		$(if $(SKIP_BILLING),-SkipBilling,)
+
 ## Build images, push, and deploy to GCP Cloud Run via Terraform
+## For brand-new projects where no resources exist yet, use: make deploy-image SKIP_IMPORT=1
 deploy-image:
 	powershell -ExecutionPolicy Bypass -File ./deploy.ps1 \
 		-ProjectId "$(GCP_PROJECT_ID)" \
@@ -52,4 +61,5 @@ deploy-image:
 		-Region "$(GCP_REGION)" \
 		-BucketName "$(GCS_BUCKET)" \
 		-DockerUsername "$(DOCKER_USERNAME)" \
-		-ImageName "$(APP_NAME)"
+		-ImageName "$(APP_NAME)" \
+		$(if $(SKIP_IMPORT),-SkipImport,)

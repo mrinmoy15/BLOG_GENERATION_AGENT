@@ -152,9 +152,9 @@ def health():
 def generate_stream(req: GenerateRequest):
     """
     SSE endpoint. Client connects and receives a stream of events:
-      event: node_done  — a pipeline node completed
-      event: result     — full markdown ready
-      event: error      — something went wrong
+      event: node_done  - a pipeline node completed
+      event: result     - full markdown ready
+      event: error      - something went wrong
     """
     os.makedirs(req.output_dir, exist_ok=True)
 

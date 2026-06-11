@@ -450,7 +450,7 @@ def generate_and_place_images(state: State, config: RunnableConfig) -> dict:
     for spec in image_specs:
         placeholder = spec["placeholder"]
         img_filename = spec["filename"]
-        out_path = images_dir / img_filename     # ← renamed filename → img_filename to avoid shadowing
+        out_path = images_dir / img_filename     # renamed filename -> img_filename to avoid shadowing
 
         # generate only if needed (out_path never exists on GCS, so always uploads there)
         if not out_path.exists():
